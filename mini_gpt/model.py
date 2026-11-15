@@ -361,3 +361,80 @@ class GPT(nn.Module):
             x, weights = block(x)
             maps.append(weights)
         return maps
+
+    @torch.no_grad()
+    def generate(
+        self,
+        idx: torch.Tensor,
+        max_new_tokens: int,
+        temperature: float = 1.0,
+        top_k: int | None = None,
+        top_p: float | None = None,
+    ) -> torch.Tensor:
+        """Extend the sequence ``idx`` (B, T) by ``max_new_tokens`` sampled tokens.
+
+        This is *autoregressive* generation: predict one token, append it to
+        the input, and repeat. Call ``model.eval()`` first to switch off dropout.
+        """
+        for _ in range(max_new_tokens):
+            # The model can only see block_size tokens, so keep just the most recent ones.
+            idx_cond = idx[:, -self.cfg.block_size :]
+            logits, _ = self(idx_cond)  # (B, T, V)
+            logits = logits[:, -1, :]  # (B, V): only the prediction after the last token
+            next_id = sample_next_token(logits, temperature, top_k, top_p)  # (B, 1)
+            idx = torch.cat([idx, next_id], dim=1)  # (B, T + 1)
+        return idx
+
+
+# --------------------------------------------------------------------------- #
+# Sampling: choosing the next token from the model's scores
+# --------------------------------------------------------------------------- #
+
+
+def top_k_filter(logits: torch.Tensor, k: int) -> torch.Tensor:
+    """Keep only the ``k`` highest-scoring tokens; set every other logit to -inf."""
+    k = min(k, logits.size(-1))
+    kth_largest = torch.topk(logits, k, dim=-1).values[..., -1, None]  # (B, 1)
+    return logits.masked_fill(logits < kth_largest, float("-inf"))
+
+
+def top_p_filter(logits: torch.Tensor, p: float) -> torch.Tensor:
+    """Nucleus sampling: keep the smallest set of top tokens whose probabilities sum to >= p.
+
+    Unlike top-k, the number of tokens kept adapts: few when the model is
+    confident, many when it is unsure.
+    """
+    sorted_logits, sorted_indices = torch.sort(logits, descending=True, dim=-1)
+    sorted_probs = F.softmax(sorted_logits, dim=-1)
+    cumulative = sorted_probs.cumsum(dim=-1)
+    # Probability mass that comes BEFORE each token in the sorted order. A token
+    # is dropped once the tokens ahead of it already cover p (the best token has
+    # nothing ahead of it, so it is always kept).
+    mass_before = cumulative - sorted_probs
+    sorted_logits = sorted_logits.masked_fill(mass_before >= p, float("-inf"))
+    # Put the logits back into their original (unsorted) vocabulary order.
+    return torch.full_like(logits, float("-inf")).scatter(-1, sorted_indices, sorted_logits)
+
+
+def sample_next_token(
+    logits: torch.Tensor,
+    temperature: float = 1.0,
+    top_k: int | None = None,
+    top_p: float | None = None,
+) -> torch.Tensor:
+    """Pick the next token ID from ``logits`` of shape (B, V). Returns shape (B, 1).
+
+    * temperature < 1 sharpens the distribution (safer, more repetitive);
+      temperature > 1 flattens it (more surprising, more mistakes);
+      temperature == 0 always takes the single most likely token ("greedy").
+    * top_k and top_p cut off the unlikely tail before sampling.
+    """
+    if temperature == 0.0:
+        return logits.argmax(dim=-1, keepdim=True)
+    logits = logits / temperature
+    if top_k is not None and top_k > 0:
+        logits = top_k_filter(logits, top_k)
+    if top_p is not None and 0.0 < top_p < 1.0:
+        logits = top_p_filter(logits, top_p)
+    probs = F.softmax(logits, dim=-1)  # (B, V), each row sums to 1
+    return torch.multinomial(probs, num_samples=1)  # draw one token per row
