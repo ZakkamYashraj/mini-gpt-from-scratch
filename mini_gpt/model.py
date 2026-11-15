@@ -172,3 +172,80 @@ class MultiHeadAttention(nn.Module):
         out = torch.cat(head_outputs, dim=-1)  # (B, T, C)
         out = self.dropout(self.proj(out))  # (B, T, C)
         return out, torch.stack(head_weights, dim=1)  # (B, n_head, T, T)
+
+
+class FeedForward(nn.Module):
+    """A two-layer network applied to every token position independently.
+
+    Attention lets tokens *gather* information from each other; the
+    feed-forward block lets each token *think about* what it gathered.
+
+        out = W_2 . GELU(W_1 . x)       widths: C -> 4C -> C
+    """
+
+    def __init__(self, n_embd: int, dropout: float = 0.0, bias: bool = False) -> None:
+        super().__init__()
+        self.fc = nn.Linear(n_embd, 4 * n_embd, bias=bias)  # expand to 4x the width
+        self.act = nn.GELU()  # smooth non-linearity (a softer version of ReLU)
+        self.proj = nn.Linear(4 * n_embd, n_embd, bias=bias)  # project back to width C
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """(B, T, C) -> (B, T, C). The same weights are used at every position."""
+        return self.dropout(self.proj(self.act(self.fc(x))))
+
+
+class LayerNorm(nn.Module):
+    """Layer normalisation, written out by hand.
+
+    For each token vector x (length C) separately:
+
+        x_hat = (x - mean(x)) / sqrt(var(x) + eps)     now mean 0, variance 1
+        out   = gain * x_hat + bias                    learned re-scale and shift
+
+    Keeping every vector at a standard size stops the numbers from growing or
+    shrinking as they pass through many layers, which makes training stable.
+    """
+
+    def __init__(self, n_embd: int, bias: bool = False, eps: float = 1e-5) -> None:
+        super().__init__()
+        self.eps = eps  # tiny constant that avoids dividing by zero
+        self.gain = nn.Parameter(torch.ones(n_embd))  # starts as "do nothing" (multiply by 1)
+        self.bias = nn.Parameter(torch.zeros(n_embd)) if bias else None
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """(B, T, C) -> (B, T, C), normalising over the last dimension only."""
+        mean = x.mean(dim=-1, keepdim=True)  # (B, T, 1)
+        var = x.var(dim=-1, keepdim=True, unbiased=False)  # (B, T, 1)
+        x_hat = (x - mean) / torch.sqrt(var + self.eps)
+        out = self.gain * x_hat
+        if self.bias is not None:
+            out = out + self.bias
+        return out
+
+
+class Block(nn.Module):
+    """One transformer block: communicate (attention), then compute (feed-forward).
+
+        x = x + attention(norm(x))
+        x = x + feed_forward(norm(x))
+
+    * ``x + ...`` is a *residual connection*: each sub-layer only has to learn
+      a correction to add to x. Gradients can also flow straight through the
+      "+" during backpropagation, which is what makes deep stacks trainable.
+    * The norm is applied *before* each sub-layer ("pre-LayerNorm", as in GPT-2).
+    """
+
+    def __init__(self, cfg: ModelConfig) -> None:
+        super().__init__()
+        self.ln1 = LayerNorm(cfg.n_embd, cfg.bias)
+        self.attn = MultiHeadAttention(cfg.n_embd, cfg.n_head, cfg.block_size, cfg.dropout, cfg.bias)
+        self.ln2 = LayerNorm(cfg.n_embd, cfg.bias)
+        self.ffwd = FeedForward(cfg.n_embd, cfg.dropout, cfg.bias)
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """(B, T, C) -> (B, T, C), plus this block's attention weights (B, n_head, T, T)."""
+        attn_out, weights = self.attn(self.ln1(x))
+        x = x + attn_out  # residual connection around attention
+        x = x + self.ffwd(self.ln2(x))  # residual connection around the feed-forward net
+        return x, weights
