@@ -1,0 +1,39 @@
+# A very small model that trains in a few minutes on a CPU.
+# The text it writes is rough, but you can watch it learn spelling and line structure.
+#
+#   python train.py --config configs/tiny_cpu.yaml
+
+name: tiny_cpu
+
+model:
+  block_size: 64
+  n_layer: 3
+  n_head: 3
+  n_embd: 96
+  dropout: 0.0        # tiny models underfit, so they do not need dropout
+  bias: false
+  use_pos_emb: true
+  tie_weights: true
+
+data:
+  input_file: data/tinyshakespeare.txt
+  tokenizer: char
+  bpe_vocab_size: 512
+  val_fraction: 0.1
+
+train:
+  seed: 1337
+  device: auto
+  amp: true           # ignored on CPU
+  batch_size: 32
+  max_steps: 2000
+  learning_rate: 1.0e-3
+  min_lr: 1.0e-4
+  warmup_steps: 100
+  weight_decay: 0.1
+  grad_clip: 1.0
+  eval_interval: 200
+  eval_batches: 20
+  sample_interval: 500
+  sample_tokens: 200
+  out_dir: checkpoints/tiny_cpu

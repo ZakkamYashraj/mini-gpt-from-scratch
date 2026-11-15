@@ -1,0 +1,39 @@
+# The main configuration: ~10M parameters, character-level Tiny Shakespeare.
+# Meant for a laptop GPU with ~8 GB VRAM (takes roughly 20-30 minutes).
+#
+#   python train.py --config configs/small.yaml
+
+name: small
+
+model:
+  block_size: 256     # context length in tokens
+  n_layer: 6          # transformer blocks
+  n_head: 6           # attention heads per block (n_embd must be divisible by n_head)
+  n_embd: 384         # embedding width
+  dropout: 0.2
+  bias: false
+  use_pos_emb: true
+  tie_weights: true
+
+data:
+  input_file: data/tinyshakespeare.txt   # swap in any UTF-8 .txt file
+  tokenizer: char                        # "char" or "bpe"
+  bpe_vocab_size: 512                    # used only when tokenizer is "bpe"
+  val_fraction: 0.1
+
+train:
+  seed: 1337
+  device: auto          # picks the GPU if PyTorch can see one
+  amp: true             # mixed precision on GPU
+  batch_size: 64
+  max_steps: 5000
+  learning_rate: 1.0e-3
+  min_lr: 1.0e-4
+  warmup_steps: 100
+  weight_decay: 0.1
+  grad_clip: 1.0
+  eval_interval: 250
+  eval_batches: 100
+  sample_interval: 500
+  sample_tokens: 300
+  out_dir: checkpoints/small
