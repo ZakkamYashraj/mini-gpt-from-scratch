@@ -114,3 +114,61 @@ class CausalSelfAttentionHead(nn.Module):
         #    Dropout randomly zeroes some weights during training (regularisation).
         out = self.dropout(weights) @ v  # (B, T, T) @ (B, T, head_size) -> (B, T, head_size)
         return out, weights
+
+
+class MultiHeadAttention(nn.Module):
+    """Several attention heads running in parallel on the same input.
+
+    One head can only compute one "kind" of relationship between tokens. With
+    n_head heads, each of width C / n_head, the model can track several kinds
+    at once (for example: "the previous character", "the start of this word",
+    "who is speaking") for the same total cost as one big head.
+
+        head outputs:  n_head tensors of shape (B, T, C / n_head)
+        concatenate :  (B, T, C)
+        project     :  one Linear layer mixes the heads' results together
+    """
+
+    def __init__(
+        self,
+        n_embd: int,
+        n_head: int,
+        block_size: int,
+        dropout: float = 0.0,
+        bias: bool = False,
+    ) -> None:
+        super().__init__()
+        if n_embd % n_head != 0:
+            raise ValueError(f"n_embd ({n_embd}) must be divisible by n_head ({n_head})")
+        head_size = n_embd // n_head
+        # Built directly from the single-head class above.
+        self.heads = nn.ModuleList(
+            [
+                CausalSelfAttentionHead(n_embd, head_size, block_size, dropout, bias)
+                for _ in range(n_head)
+            ]
+        )
+        self.proj = nn.Linear(n_embd, n_embd, bias=bias)  # mixes information across heads
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Args:
+            x: (B, T, C)
+
+        Returns:
+            out: (B, T, C)
+            weights: (B, n_head, T, T) - the attention weights of every head.
+        """
+        head_outputs = []
+        head_weights = []
+        for head in self.heads:
+            out, weights = head(x)  # (B, T, head_size), (B, T, T)
+            head_outputs.append(out)
+            head_weights.append(weights)
+
+        # Glue the heads' outputs side by side along the channel dimension:
+        # n_head tensors of width head_size -> one tensor of width C.
+        out = torch.cat(head_outputs, dim=-1)  # (B, T, C)
+        out = self.dropout(self.proj(out))  # (B, T, C)
+        return out, torch.stack(head_weights, dim=1)  # (B, n_head, T, T)
