@@ -249,3 +249,115 @@ class Block(nn.Module):
         x = x + attn_out  # residual connection around attention
         x = x + self.ffwd(self.ln2(x))  # residual connection around the feed-forward net
         return x, weights
+
+
+class GPT(nn.Module):
+    """The full language model.
+
+        token IDs (B, T)
+          -> token embedding + positional embedding      (B, T, C)
+          -> n_layer transformer Blocks                  (B, T, C)
+          -> final LayerNorm                             (B, T, C)
+          -> linear "LM head"                            (B, T, V)  scores for the next token
+
+    The output at position t is a score (a *logit*) for every token in the
+    vocabulary: how likely the model thinks each one is to come next.
+    """
+
+    def __init__(self, cfg: ModelConfig) -> None:
+        super().__init__()
+        self.cfg = cfg
+
+        # Token embedding: a table with one learned C-dimensional row per token ID.
+        self.token_emb = nn.Embedding(cfg.vocab_size, cfg.n_embd)
+        # Positional embedding: one learned row per position 0 .. block_size-1.
+        # Attention itself has no notion of order, so we add "where am I?" to
+        # every token vector. (Disabled in the no-positional-embedding ablation.)
+        self.pos_emb = nn.Embedding(cfg.block_size, cfg.n_embd) if cfg.use_pos_emb else None
+        self.drop = nn.Dropout(cfg.dropout)
+
+        self.blocks = nn.ModuleList([Block(cfg) for _ in range(cfg.n_layer)])
+        self.ln_f = LayerNorm(cfg.n_embd, cfg.bias)  # final normalisation
+
+        # LM head: turns each C-dimensional vector into V scores, one per token.
+        self.lm_head = nn.Linear(cfg.n_embd, cfg.vocab_size, bias=False)
+        if cfg.tie_weights:
+            # Weight tying: the embedding table (V, C) and the output layer's
+            # weight (V, C) have the same shape and do mirror-image jobs
+            # (ID -> vector, vector -> ID scores), so we make them the SAME
+            # tensor. This saves V*C parameters and usually improves results.
+            self.lm_head.weight = self.token_emb.weight
+
+        # Initialise weights with small random numbers (as in GPT-2).
+        self.apply(self._init_weights)
+        # The last Linear of each residual branch gets an even smaller start,
+        # so that at initialisation every block is close to "add nothing".
+        for name, param in self.named_parameters():
+            if name.endswith("proj.weight"):
+                nn.init.normal_(param, mean=0.0, std=0.02 / math.sqrt(2 * cfg.n_layer))
+
+    @staticmethod
+    def _init_weights(module: nn.Module) -> None:
+        """Normal(0, 0.02) for weight matrices and embeddings, zeros for biases."""
+        if isinstance(module, nn.Linear):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
+    def num_params(self) -> int:
+        """Number of learned parameters (shared tensors are counted once)."""
+        return sum(p.numel() for p in self.parameters())
+
+    def embed(self, idx: torch.Tensor) -> torch.Tensor:
+        """Token IDs (B, T) -> input vectors (B, T, C) = token embedding + position embedding."""
+        B, T = idx.shape
+        if T > self.cfg.block_size:
+            raise ValueError(f"Sequence length {T} exceeds block_size {self.cfg.block_size}")
+        x = self.token_emb(idx)  # (B, T, C): look up one row per token ID
+        if self.pos_emb is not None:
+            positions = torch.arange(T, device=idx.device)  # [0, 1, ..., T-1]
+            x = x + self.pos_emb(positions)  # (T, C) is broadcast across the batch
+        return self.drop(x)
+
+    def forward(
+        self, idx: torch.Tensor, targets: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        """
+        Args:
+            idx: token IDs, shape (B, T).
+            targets: the correct next tokens, shape (B, T). Optional.
+
+        Returns:
+            logits: (B, T, V) - unnormalised scores for the next token at every position.
+            loss: the average cross-entropy if ``targets`` was given, otherwise None.
+        """
+        x = self.embed(idx)  # (B, T, C)
+        for block in self.blocks:
+            x, _ = block(x)  # (B, T, C)
+        x = self.ln_f(x)  # (B, T, C)
+        logits = self.lm_head(x)  # (B, T, V)
+
+        loss = None
+        if targets is not None:
+            # Cross-entropy = -log(probability the model gave to the correct token),
+            # averaged over all B*T positions. F.cross_entropy applies the softmax
+            # itself and wants 2-D logits, so we flatten (B, T, V) -> (B*T, V).
+            B, T, V = logits.shape
+            loss = F.cross_entropy(logits.view(B * T, V), targets.view(B * T))
+        return logits, loss
+
+    @torch.no_grad()
+    def attention_maps(self, idx: torch.Tensor) -> list[torch.Tensor]:
+        """Run the model and return every block's attention weights (for visualisation).
+
+        Returns:
+            A list with one tensor per block, each of shape (B, n_head, T, T).
+        """
+        x = self.embed(idx)
+        maps = []
+        for block in self.blocks:
+            x, weights = block(x)
+            maps.append(weights)
+        return maps
