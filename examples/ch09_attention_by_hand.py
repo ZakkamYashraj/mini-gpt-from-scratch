@@ -43,6 +43,7 @@ print("\nscores = Q @ K.T / sqrt(2) =\n", scores)
 # --- 4. Without a mask (every token sees every token) ---
 weights_unmasked = F.softmax(scores, dim=-1)
 print("\nweights WITHOUT mask (each row sums to 1) =\n", weights_unmasked)
+print("output WITHOUT mask = weights @ V =\n", weights_unmasked @ V)
 
 # --- 5. Causal mask: no looking at later tokens ---
 mask = torch.tril(torch.ones(3, 3, dtype=torch.bool))
