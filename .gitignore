@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Virtual environment
+.venv/
+venv/
+
+# Training outputs (large, reproducible -> not committed)
+checkpoints/
+
+# Downloaded text and tokenized arrays (re-create with: python data/prepare.py)
+data/*.txt
+data/processed/
+
+# PDF build intermediates
+docs/build/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

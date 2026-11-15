@@ -1,0 +1,22 @@
+# Core
+# NOTE: for GPU support install PyTorch FIRST with the CUDA build that matches your
+# card (see README "Setup"), e.g.
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+torch>=2.6
+numpy>=1.26
+pyyaml>=6.0
+matplotlib>=3.8
+requests>=2.31
+
+# Tests
+pytest>=8.0
+
+# Notebook (notebooks/walkthrough.ipynb)
+nbformat>=5.10
+nbclient>=0.10
+ipykernel>=6.29
+
+# Building docs/LEARNING_GUIDE.pdf (optional)
+pypandoc_binary>=1.13
+typst>=0.13
+pypdf>=5.0
