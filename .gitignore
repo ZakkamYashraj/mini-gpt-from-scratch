@@ -23,3 +23,6 @@ docs/build/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Locally cached wheels
+.wheels/
