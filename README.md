@@ -1,8 +1,6 @@
 # mini-gpt-from-scratch
 
-A GPT-style language model implemented from scratch in PyTorch: tokenizers, attention,
-transformer blocks, training and sampling, with no `nn.Transformer` and no
-`nn.MultiheadAttention`.
+A GPT-style language model implemented in PyTorch, featuring custom tokenizers, manually implemented causal self-attention, Transformer blocks, training and text generation, without using nn.Transformer or nn.MultiheadAttention.
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)
@@ -40,26 +38,19 @@ three different plays.)
 
 ## What this is, and why I built it
 
-<!-- Edit this section so that it says, in your own words, why you built this. -->
+Large language models are easy to use and hard to see inside. I wanted to understand how they work internally, particularly how tokenization, attention, and neural network training come together to produce text.
 
-Large language models are easy to use and hard to see inside. I wanted to understand
-one completely, so I built a small one where every piece is written out by hand and can
-be read in an afternoon:
+I started this project as a hands-on exploration of GPT-style language models. The initial implementation was developed with the assistance of an AI coding tool, with a focus on making the architecture readable, testable, and understandable.
 
-- a **character tokenizer** and a **byte-level BPE tokenizer**, both from scratch;
-- **causal self-attention**, built step by step (query, key and value projections,
-  scaled dot product, mask, softmax), then **multi-head attention** built out of the
-  single head;
-- the rest of the transformer: feed-forward blocks, residual connections, a hand-written
-  LayerNorm, learned positional embeddings, weight tying;
-- a training loop with AdamW, warmup and cosine decay, gradient clipping and mixed
-  precision;
-- sampling with temperature, top-k and top-p.
+The project includes:
 
-The goal was clarity and correctness over cleverness, so the code favours readable over
-fast (attention heads are computed in a loop, for example), every class is commented
-with the maths and the intuition, and the claims in this README are backed by tests and
-measured experiments.
+- A character tokenizer and a byte-level BPE tokenizer.
+- Causal self-attention, including query, key and value projections, scaled dot-product attention, masking and softmax.
+- Multi-head attention, Transformer blocks, residual connections, LayerNorm and positional embeddings.
+- A training pipeline with AdamW, learning-rate scheduling, gradient clipping and mixed precision.
+- Text generation using temperature, top-k and top-p sampling.
+
+My objective is to understand each component deeply enough to eventually reproduce the model independently.
 
 ## Architecture
 
@@ -323,20 +314,11 @@ the real source files by `scripts/build_guide.py`, so they cannot go stale.
 [`docs/STUDY_GUIDE.md`](docs/STUDY_GUIDE.md) is the short version: the key ideas, the
 results, and likely interview questions.
 
-## What I learned
+## What I Learned
 
-<!--
-Fill this in yourself: three to five specific things, each of which you could explain
-for two minutes. Chapter 18 of the learning guide has advice. Examples of the level of
-detail to aim for:
+This section will be updated as I work through the implementation, study the underlying concepts, and independently reproduce the model.
 
-- "A loss per token cannot be compared across tokenizers: my BPE model looked twice as
-  bad as the character model until I converted both to bits per character."
-- "I removed the causal mask as an experiment and the loss dropped to 0.06 while the
-  model generated only newlines. That is how I understood what the mask is for."
--->
-
-_To be written._
+I'll document the concepts I understand, the challenges I encounter, and the experiments I conduct along the way.
 
 ## Limitations and future work
 
@@ -375,7 +357,24 @@ _To be written._
 - The Tiny Shakespeare dataset comes from Karpathy's
   [char-rnn](https://github.com/karpathy/char-rnn).
 
-Built with the help of an AI coding assistant (Claude), as the commit history shows.
+
+## Development Background
+
+This project began as an exploration of how GPT-style language models work under the hood.
+
+The initial implementation was developed with AI assistance. I defined the project requirements, architecture goals, experiments, and learning objectives, and used AI tools to assist with implementation, debugging, and verification.
+
+Rather than treating the finished implementation as a black box, I'm using this project as a foundation to study the mathematics, understand the architecture, and independently reproduce its components.
+
+My next goal is to build a second implementation independently, writing and understanding the core components myself.
+
+## Independent Reimplementation
+
+An independent reimplementation will be maintained separately:
+
+**Repository:** `mini-gpt-from-scratch-rebuilt`
+
+The goal is to demonstrate the knowledge gained from studying this project through an implementation written independently.
 
 ## License
 
