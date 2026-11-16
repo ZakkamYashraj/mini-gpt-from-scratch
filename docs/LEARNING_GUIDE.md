@@ -927,7 +927,7 @@ A model has many parameters, and we need to find them all (to update them), move
 all to the GPU, and save them all to disk. `nn.Module` is the base class that handles
 this bookkeeping.
 
-**`examples/ch03_pytorch_basics.py` · lines 38–53**
+**`examples/ch03_pytorch_basics.py` · lines 38–55**
 
 ```python
 # --- 4. nn.Module: a container for parameters ---
@@ -935,11 +935,13 @@ class Line(nn.Module):
     """The model y = w * x + b, with two learnable numbers w and b."""
 
     def __init__(self) -> None:
+        """Create the two parameters, both starting at 0."""
         super().__init__()
         self.w = nn.Parameter(torch.tensor(0.0))  # nn.Parameter = "please learn this"
         self.b = nn.Parameter(torch.tensor(0.0))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Compute w * x + b for every element of x."""
         return self.w * x + self.b
 
 
@@ -980,7 +982,7 @@ Here is a complete training run. The data are 50 points scattered around the lin
 $y = 2x + 1$. The model is `Line` from above, starting at $w = 0$, $b = 0$. The loop
 should discover $w \approx 2$ and $b \approx 1$ by itself.
 
-**`examples/ch03_pytorch_basics.py` · lines 55–68**
+**`examples/ch03_pytorch_basics.py` · lines 57–70**
 
 ```python
 # --- 5. A complete training loop ---
@@ -1781,7 +1783,7 @@ all the values of the parameters. In PyTorch, `model.state_dict()` returns a dic
 mapping each parameter's name to its tensor, and `torch.save` writes a dictionary to
 disk.
 
-**`mini_gpt/utils.py` · lines 120–124**
+**`mini_gpt/utils.py` · lines 121–125**
 
 ```python
 def save_checkpoint(path: str | Path, **contents: Any) -> None:
@@ -2099,7 +2101,7 @@ tokenizer needs to change.
 
 Before merging, the text is split into word-like **chunks**:
 
-**`mini_gpt/tokenizer.py` · lines 90–94**
+**`mini_gpt/tokenizer.py` · lines 91–95**
 
 ```python
 # Split text into "chunks": a word together with the single whitespace character
@@ -2121,7 +2123,7 @@ once and multiply by how often it occurs, exactly as in the `hug`/`pug` example.
 
 The helper that performs one merge on one list of IDs:
 
-**`mini_gpt/tokenizer.py` · lines 97–111**
+**`mini_gpt/tokenizer.py` · lines 98–112**
 
 ```python
 def _merge_pair(ids: list[int], pair: tuple[int, int], new_id: int) -> list[int]:
@@ -2146,7 +2148,7 @@ positions, otherwise it copies one element.
 
 Training is the four-step loop of Section 6.3, almost word for word:
 
-**`mini_gpt/tokenizer.py` · lines 138–176**
+**`mini_gpt/tokenizer.py` · lines 139–177**
 
 ```python
     @classmethod
@@ -2202,7 +2204,7 @@ from a pair of IDs to the new ID. Python dictionaries remember insertion order, 
 
 **Encoding** replays the merges on new text:
 
-**`mini_gpt/tokenizer.py` · lines 185–195**
+**`mini_gpt/tokenizer.py` · lines 186–196**
 
 ```python
     def _encode_chunk(self, chunk: str) -> list[int]:
@@ -2225,7 +2227,7 @@ matters: `hug` can only be formed after `ug` exists.
 **Decoding** is the easy direction. Each token ID stands for a fixed sequence of bytes,
 so we concatenate those bytes and interpret the result as UTF-8:
 
-**`mini_gpt/tokenizer.py` · lines 206–214**
+**`mini_gpt/tokenizer.py` · lines 207–215**
 
 ```python
     def decode(self, ids: list[int]) -> str:
@@ -2455,7 +2457,7 @@ rows that were actually looked up in a batch receive a gradient from that batch.
 
 In the model, the token embedding is one line of `GPT.__init__`:
 
-**`mini_gpt/model.py` · lines 271–272**
+**`mini_gpt/model.py` · lines 293–294**
 
 ```python
         # Token embedding: a table with one learned C-dimensional row per token ID.
@@ -2562,7 +2564,7 @@ about positions.
 
 Here is the method of the model that does both lookups and the addition:
 
-**`mini_gpt/model.py` · lines 313–322**
+**`mini_gpt/model.py` · lines 335–344**
 
 ```python
     def embed(self, idx: torch.Tensor) -> torch.Tensor:
@@ -2757,17 +2759,21 @@ bother, if counting already works? Because counting does not extend to longer co
 (Exercise 8.5 shows where it breaks down), while the neural version does. This small
 network is the seed that the GPT grows from.
 
-**`examples/ch08_bigram.py` · lines 50–63**
+**`examples/ch08_bigram.py` · lines 50–67**
 
 ```python
 class BigramLM(nn.Module):
     """A table with one row of V scores (logits) for every possible current token."""
 
     def __init__(self, vocab_size: int) -> None:
+        """Create the (V, V) table of logits."""
         super().__init__()
         self.table = nn.Embedding(vocab_size, vocab_size)
 
-    def forward(self, idx: torch.Tensor, targets: torch.Tensor | None = None):
+    def forward(
+        self, idx: torch.Tensor, targets: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        """Return the logits (B, T, V) and, if targets are given, the cross-entropy loss."""
         logits = self.table(idx)  # (B, T) -> (B, T, V): look up the row for each token
         loss = None
         if targets is not None:
@@ -2801,7 +2807,7 @@ the only difference is how the logits are computed.
 
 The training loop is the five steps of Chapter 3:
 
-**`examples/ch08_bigram.py` · lines 75–90**
+**`examples/ch08_bigram.py` · lines 80–95**
 
 ```python
 # --- 3. Train it with the standard loop ---
@@ -2856,10 +2862,11 @@ does.
 
 Generating text follows the loop of Chapter 1:
 
-**`examples/ch08_bigram.py` · lines 66–72**
+**`examples/ch08_bigram.py` · lines 70–77**
 
 ```python
     def generate(self, idx: torch.Tensor, max_new_tokens: int) -> torch.Tensor:
+        """Extend ``idx`` (B, T) by ``max_new_tokens`` tokens, sampling one at a time."""
         for _ in range(max_new_tokens):
             logits, _ = self(idx)
             probs = F.softmax(logits[:, -1, :], dim=-1)  # distribution after the last token
@@ -3698,7 +3705,7 @@ The outputs of the heads, each of shape `(B, T, head_size)`, are **concatenated*
 end to end along the last dimension) to give `(B, T, C)` again. A final Linear layer
 then mixes the heads' results together.
 
-**`mini_gpt/model.py` · lines 119–174**
+**`mini_gpt/model.py` · lines 119–182**
 
 ```python
 class MultiHeadAttention(nn.Module):
@@ -3722,6 +3729,14 @@ class MultiHeadAttention(nn.Module):
         dropout: float = 0.0,
         bias: bool = False,
     ) -> None:
+        """
+        Args:
+            n_embd: width C of the token vectors (must be divisible by n_head).
+            n_head: number of attention heads run in parallel.
+            block_size: maximum sequence length.
+            dropout: dropout probability.
+            bias: whether the Linear layers have a bias term.
+        """
         super().__init__()
         if n_embd % n_head != 0:
             raise ValueError(f"n_embd ({n_embd}) must be divisible by n_head ({n_head})")
@@ -3789,7 +3804,7 @@ values. It does not do much *thinking* about what was gathered. That is the job 
 **feed-forward** network (also called the MLP): a small two-layer network of the kind
 you built in Chapter 4, applied to each token's vector separately.
 
-**`mini_gpt/model.py` · lines 177–195**
+**`mini_gpt/model.py` · lines 185–209**
 
 ```python
 class FeedForward(nn.Module):
@@ -3802,6 +3817,12 @@ class FeedForward(nn.Module):
     """
 
     def __init__(self, n_embd: int, dropout: float = 0.0, bias: bool = False) -> None:
+        """
+        Args:
+            n_embd: width C of the token vectors; the hidden layer is 4 times wider.
+            dropout: dropout probability applied to the output.
+            bias: whether the Linear layers have a bias term.
+        """
         super().__init__()
         self.fc = nn.Linear(n_embd, 4 * n_embd, bias=bias)  # expand to 4x the width
         self.act = nn.GELU()  # smooth non-linearity (a softer version of ReLU)
@@ -3861,10 +3882,11 @@ is close to 1, not close to 0. The gradient has a direct path, straight through 
 The experiment below stacks 30 small layers and measures how much gradient arrives at
 the first one, with and without the additions:
 
-**`examples/ch11_block.py` · lines 47–55**
+**`examples/ch11_block.py` · lines 47–56**
 
 ```python
 def first_layer_gradient(use_residual: bool) -> float:
+    """Size of the gradient reaching the first of 30 stacked layers."""
     torch.manual_seed(0)
     layers = [nn.Linear(16, 16) for _ in range(30)]
     h = torch.randn(4, 16)
@@ -3925,7 +3947,7 @@ same result. Whatever happened to the scale in earlier layers is erased.
 
 The repository implements this by hand, in a few lines:
 
-**`mini_gpt/model.py` · lines 198–224**
+**`mini_gpt/model.py` · lines 212–244**
 
 ```python
 class LayerNorm(nn.Module):
@@ -3941,6 +3963,12 @@ class LayerNorm(nn.Module):
     """
 
     def __init__(self, n_embd: int, bias: bool = False, eps: float = 1e-5) -> None:
+        """
+        Args:
+            n_embd: length C of the vectors to normalise.
+            bias: also learn an additive bias (the gain is always learned).
+            eps: small constant added to the variance.
+        """
         super().__init__()
         self.eps = eps  # tiny constant that avoids dividing by zero
         self.gain = nn.Parameter(torch.ones(n_embd))  # starts as "do nothing" (multiply by 1)
@@ -3979,7 +4007,7 @@ Now assemble the pieces.
 
 ![One transformer block. The token vectors flow upward. Each sub-layer (attention, then feed-forward) reads a normalised copy of the stream and adds its result back.](figures/transformer_block.png)
 
-**`mini_gpt/model.py` · lines 227–251**
+**`mini_gpt/model.py` · lines 247–272**
 
 ```python
 class Block(nn.Module):
@@ -3995,6 +4023,7 @@ class Block(nn.Module):
     """
 
     def __init__(self, cfg: ModelConfig) -> None:
+        """Create the two sub-layers and their LayerNorms from the model configuration."""
         super().__init__()
         self.ln1 = LayerNorm(cfg.n_embd, cfg.bias)
         self.attn = MultiHeadAttention(cfg.n_embd, cfg.n_head, cfg.block_size, cfg.dropout, cfg.bias)
@@ -4111,10 +4140,11 @@ Reading from the bottom:
 
 The constructor builds exactly these parts, in this order:
 
-**`mini_gpt/model.py` · lines 267–297**
+**`mini_gpt/model.py` · lines 288–319**
 
 ```python
     def __init__(self, cfg: ModelConfig) -> None:
+        """Create every layer of the model described by ``cfg`` and initialise the weights."""
         super().__init__()
         self.cfg = cfg
 
@@ -4152,7 +4182,7 @@ Sections 12.4 and 12.5.
 
 ### 12.2 The forward pass
 
-**`mini_gpt/model.py` · lines 324–349**
+**`mini_gpt/model.py` · lines 346–371**
 
 ```python
     def forward(
@@ -4257,7 +4287,7 @@ Same shape, and mirror-image jobs. In both, row $k$ is "the direction in space t
 means token $k$". **Weight tying** takes the obvious step and uses a single matrix for
 both:
 
-**`mini_gpt/model.py` · lines 284–289**
+**`mini_gpt/model.py` · lines 306–311**
 
 ```python
         if cfg.tie_weights:
@@ -4298,7 +4328,7 @@ does, it costs nothing, and it matters as soon as you switch to a BPE vocabulary
 Before training, every parameter needs a starting value. The choice matters more than
 you might expect.
 
-**`mini_gpt/model.py` · lines 291–297**
+**`mini_gpt/model.py` · lines 313–319**
 
 ```python
         # Initialise weights with small random numbers (as in GPT-2).
@@ -4310,7 +4340,7 @@ you might expect.
                 nn.init.normal_(param, mean=0.0, std=0.02 / math.sqrt(2 * cfg.n_layer))
 ```
 
-**`mini_gpt/model.py` · lines 299–307**
+**`mini_gpt/model.py` · lines 321–329**
 
 ```python
     @staticmethod
@@ -4374,7 +4404,7 @@ block is its feed-forward network.
 
 The method that counts:
 
-**`mini_gpt/model.py` · lines 309–311**
+**`mini_gpt/model.py` · lines 331–333**
 
 ```python
     def num_params(self) -> int:
@@ -4891,7 +4921,7 @@ A trained model maps a context to a probability distribution over the next token
 Chapter 1 described how to turn that into text, and the bigram model of Chapter 8 did
 it in five lines. The real method has the same skeleton:
 
-**`mini_gpt/model.py` · lines 365–386**
+**`mini_gpt/model.py` · lines 387–408**
 
 ```python
     @torch.no_grad()
@@ -4998,7 +5028,7 @@ system makes its particles move more randomly.)
 **Top-k** sampling is a blunt instrument: keep the `k` tokens with the highest logits,
 and give every other token a probability of zero.
 
-**`mini_gpt/model.py` · lines 394–398**
+**`mini_gpt/model.py` · lines 416–420**
 
 ```python
 def top_k_filter(logits: torch.Tensor, k: int) -> torch.Tensor:
@@ -5032,7 +5062,7 @@ adding them to a set until their probabilities reach `p`. The set is called the
 **nucleus**. A confident distribution gives a small nucleus; a flat one gives a large
 nucleus.
 
-**`mini_gpt/model.py` · lines 401–416**
+**`mini_gpt/model.py` · lines 423–438**
 
 ```python
 def top_p_filter(logits: torch.Tensor, p: float) -> torch.Tensor:
@@ -5083,7 +5113,7 @@ together already exceed one half.
 
 ### 14.6 Putting the three together
 
-**`mini_gpt/model.py` · lines 419–440**
+**`mini_gpt/model.py` · lines 441–462**
 
 ```python
 def sample_next_token(
@@ -5548,7 +5578,7 @@ well as their output. Now we use them.
 The model has a method for this. It is the forward pass of Chapter 12 with one
 difference: it keeps the weights that `forward` throws away.
 
-**`mini_gpt/model.py` · lines 351–363**
+**`mini_gpt/model.py` · lines 373–385**
 
 ```python
     @torch.no_grad()
@@ -5573,7 +5603,7 @@ the main model and one sentence of 48 characters that is 6 tensors of shape
 The script `scripts/visualize_attention.py` loads the checkpoint, encodes a sentence,
 and asks for these maps:
 
-**`scripts/visualize_attention.py` · lines 107–113**
+**`scripts/visualize_attention.py` · lines 108–114**
 
 ```python
     text = args.text.replace("\\n", "\n")
@@ -6332,7 +6362,7 @@ that possible, and the project has all four:
 
 Open any function in the package:
 
-**`mini_gpt/utils.py` · lines 127–129**
+**`mini_gpt/utils.py` · lines 128–130**
 
 ```python
 def load_checkpoint(path: str | Path, device: torch.device | str = "cpu") -> dict[str, Any]:

@@ -186,7 +186,8 @@
 #set page(
   header: context {
     let here-page = here().page()
-    let chapters = query(heading.where(level: 2))
+    // chapters (level 2) and parts / appendices (level 1): the header names whichever came last
+    let chapters = query(heading.where(level: 1).or(heading.where(level: 2)))
     let on-page = chapters.filter(h => h.location().page() == here-page)
     let earlier = chapters.filter(h => h.location().page() < here-page)
     let current = if on-page.len() > 0 { on-page.first() } else if earlier.len() > 0 { earlier.last() } else { none }
