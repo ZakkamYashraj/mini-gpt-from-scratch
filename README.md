@@ -69,19 +69,19 @@ flowchart TB
     TOK --> IDS["Token IDs (B, T)"]
     IDS --> TE["Token embedding (V, C)"]
     IDS --> PE["Positional embedding (block_size, C)"]
-    TE --> SUM(("+"))
+    TE --> SUM(("#43;"))
     PE --> SUM
     SUM --> X0
 
-    subgraph BLOCK["Transformer block, repeated n_layer times"]
+    subgraph BLOCK["Transformer block (repeated n_layer times)"]
         direction TB
         X0["x (B, T, C)"] --> LN1["LayerNorm"]
         LN1 --> ATT["Multi-head causal self-attention"]
-        ATT --> A1(("+"))
+        ATT --> A1(("#43;"))
         X0 -. residual .-> A1
         A1 --> LN2["LayerNorm"]
         LN2 --> FF["Feed-forward: Linear, GELU, Linear"]
-        FF --> A2(("+"))
+        FF --> A2(("#43;"))
         A1 -. residual .-> A2
     end
 
