@@ -11,7 +11,7 @@ Usage (from the repository root):
     python scripts/run_ablations.py --max_steps 300    # quick smoke test
 
 Outputs: results/ablations.md (table), results/ablations.json (raw numbers),
-results/ablations.png (bar chart).
+results/ablations.png (dot plot).
 """
 
 from __future__ import annotations
@@ -135,30 +135,47 @@ def write_markdown(rows: list[dict], path: Path, max_steps: int, seeds: list[int
         )
     lines += [
         "",
-        "![Ablation bar chart](ablations.png)",
+        "![Ablation results](ablations.png)",
         "",
         "Notes:",
         "",
         "- *Val loss* is the best validation loss seen during the run (the checkpoint that would be kept).",
-        "- With one seed per variant, differences of about 0.01 bits/char are within run-to-run noise; "
-        "see the README for the interpretation.",
+        "- The range in parentheses is the lowest and highest value over the seeds. Two variants "
+        "whose ranges overlap cannot be told apart by this experiment."
+        if len(seeds) > 1 else
+        "- Only one seed was run per variant, so small differences may be run-to-run noise.",
         "",
     ]
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def plot_bars(rows: list[dict], path: Path) -> None:
-    """Horizontal bar chart of bits per character for each variant."""
+def plot_results(rows: list[dict], path: Path) -> None:
+    """Dot plot of bits per character: one dot per variant, a line for the range over seeds.
+
+    The differences are a few percent, so the axis is zoomed in. That is honest
+    for dots (which mark a position) but would be misleading for bars (whose
+    length is read as the value), which is why this is not a bar chart.
+    """
     apply_style()
-    fig, ax = plt.subplots(figsize=(7.5, 0.62 * len(rows) + 1.3))
-    names = [r["variant"] for r in rows][::-1]
-    values = [r["bits_per_char"] for r in rows][::-1]
-    ax.barh(names, values, color=BLUE, height=0.55)
-    for name, value in zip(names, values):
-        ax.text(value + 0.02, name, f"{value:.3f}", va="center", color=TEXT, fontsize=9)
-    ax.set_xlim(0, max(values) * 1.12)
-    ax.set_xlabel("validation bits per character (lower is better)")
-    ax.set_title("Ablation study: effect of changing one component")
+    fig, ax = plt.subplots(figsize=(7.5, 0.55 * len(rows) + 1.4))
+    rows = rows[::-1]  # first variant at the top
+    for y, r in enumerate(rows):
+        ax.plot([r["bits_per_char_min"], r["bits_per_char_max"]], [y, y], color=BLUE, linewidth=2.5,
+                solid_capstyle="round", alpha=0.45)
+        ax.plot(r["bits_per_char"], y, "o", color=BLUE, markersize=9, markeredgecolor="white",
+                markeredgewidth=2, zorder=3)
+        ax.text(r["bits_per_char_max"] + 0.008, y, f"{r['bits_per_char']:.3f}", va="center",
+                color=TEXT, fontsize=9)
+    baseline = next((r for r in rows if r["variant"] == "baseline"), None)
+    if baseline is not None:
+        ax.axvline(baseline["bits_per_char"], color=MUTED, linewidth=1, linestyle=":")
+    low = min(r["bits_per_char_min"] for r in rows)
+    high = max(r["bits_per_char_max"] for r in rows)
+    ax.set_xlim(low - 0.03, high + 0.05)
+    ax.set_ylim(-0.6, len(rows) - 0.4)
+    ax.set_yticks(range(len(rows)), [r["variant"] for r in rows])
+    ax.set_xlabel("validation bits per character (lower is better; note the zoomed axis)")
+    ax.set_title("Ablation study: dot = mean, line = range over seeds")
     ax.grid(axis="y", visible=False)
     ax.tick_params(axis="y", colors=MUTED, length=0)
     fig.savefig(path)
@@ -186,7 +203,7 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "ablations.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
     write_markdown(rows, out_dir / "ablations.md", runs[0]["max_steps"], args.seeds)
-    plot_bars(rows, out_dir / "ablations.png")
+    plot_results(rows, out_dir / "ablations.png")
 
     print(f"\n{'variant':<12} {'params':>8} {'val/token':>10} {'bits/char':>10}")
     for r in rows:

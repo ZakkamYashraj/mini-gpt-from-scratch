@@ -100,6 +100,7 @@ def render_code(path: str, args: dict[str, str]) -> list[str]:
     source = (ROOT / path).read_text(encoding="utf-8")
     lines = source.splitlines()
     first, last = select(lines, source, args)
+    last = min(len(lines), last + int(args.get("after", "0")))  # after="1": one more line
     where = f"line {first}" if first == last else f"lines {first}–{last}"
     language = LANGUAGES.get(Path(path).suffix, "text")
     return [f"**`{path}` · {where}**", "", f"```{language}", *lines[first - 1 : last], "```"]
