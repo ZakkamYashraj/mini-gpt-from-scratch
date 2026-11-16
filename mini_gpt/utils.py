@@ -18,10 +18,12 @@ def fix_console_encoding() -> None:
 
     The default Windows console encoding cannot print every character (for
     example Telugu script). Switching stdout to UTF-8 avoids UnicodeEncodeError.
+    Line buffering makes each printed line appear immediately, even when the
+    output is redirected to a log file.
     """
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
-            stream.reconfigure(encoding="utf-8", errors="replace")
+            stream.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 
 
 def set_seed(seed: int) -> None:

@@ -12,12 +12,16 @@ Everything the run produces goes into ``train.out_dir`` (e.g. checkpoints/small/
     log.csv        step, train loss, val loss, learning rate, elapsed seconds
     samples.json   text generated at regular intervals during training
     samples.md     a readable early / middle / final comparison of those samples
+
+With ``--results_dir results`` the samples and the loss log are also copied to
+results/, which (unlike checkpoints/) is committed to git.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import time
 from pathlib import Path
 from typing import Any
@@ -98,6 +102,11 @@ def write_samples_markdown(samples: list[dict[str, Any]], path: Path, cfg: Confi
         f"(temperature 0.8, top-k 50, prompt = a newline).",
         "",
     ]
+    measured = [s for s in samples if s.get("val_loss") is not None]
+    if measured:
+        best = min(measured, key=lambda s: s["val_loss"])
+        lines += [f"The validation loss was lowest at step {best['step']} ({best['val_loss']:.3f}); "
+                  "that is the checkpoint saved as `best.pt`.", ""]
     for stage, sample in wanted.items():
         val = f", val loss {sample['val_loss']:.3f}" if sample.get("val_loss") is not None else ""
         lines += [f"## {stage} - step {sample['step']}{val}", "", "```text", sample["text"].strip("\n"), "```", ""]
@@ -184,7 +193,7 @@ def train(cfg: Config, results_dir: str | None = None) -> dict[str, Any]:
         x, y = get_batch(train_ids, cfg.model.block_size, cfg.train.batch_size, device)
 
         # 2) Forward pass: compute the loss. autocast runs most operations in
-        #    float16 on the GPU (about half the memory, noticeably faster).
+        #    float16 on the GPU, which makes each step noticeably faster.
         with torch.autocast(device_type=device.type, dtype=torch.float16, enabled=use_amp):
             _, loss = model(x, y)
 
@@ -210,7 +219,9 @@ def train(cfg: Config, results_dir: str | None = None) -> dict[str, Any]:
     (out_dir / "samples.json").write_text(json.dumps(samples, indent=2, ensure_ascii=False), encoding="utf-8")
     write_samples_markdown(samples, out_dir / "samples.md", cfg)
     if results_dir is not None:
+        # Keep a copy of the things worth committing (checkpoints/ is not in git).
         write_samples_markdown(samples, Path(results_dir) / "samples.md", cfg)
+        shutil.copyfile(out_dir / "log.csv", Path(results_dir) / "training_log.csv")
 
     return {
         "name": cfg.name,
@@ -232,7 +243,7 @@ def main() -> None:
     parser.add_argument("--set", nargs="*", default=[], metavar="SECTION.KEY=VALUE",
                         help="override config values, e.g. --set train.max_steps=500")
     parser.add_argument("--results_dir", default=None,
-                        help="also write samples.md into this folder (e.g. results)")
+                        help="also copy samples.md and the loss log into this folder (e.g. results)")
     args = parser.parse_args()
     fix_console_encoding()
 

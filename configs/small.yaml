@@ -34,6 +34,6 @@ train:
   grad_clip: 1.0
   eval_interval: 250
   eval_batches: 100
-  sample_interval: 500
+  sample_interval: 250
   sample_tokens: 300
   out_dir: checkpoints/small
