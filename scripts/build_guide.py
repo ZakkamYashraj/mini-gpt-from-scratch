@@ -201,6 +201,7 @@ def build() -> str:
 
 
 def main() -> None:
+    """Command-line entry point."""
     parser = argparse.ArgumentParser(description="Assemble the learning guide.")
     parser.add_argument("--check", action="store_true", help="fail if LEARNING_GUIDE.md is stale")
     args = parser.parse_args()

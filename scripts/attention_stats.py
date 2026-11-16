@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # allow `import mini_gpt`, `import generate`
@@ -25,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # allow `import mi
 import torch  # noqa: E402
 
 from generate import load_model  # noqa: E402
+from mini_gpt.config import Config  # noqa: E402
 from mini_gpt.data import get_batch, load_dataset  # noqa: E402
 from mini_gpt.utils import fix_console_encoding, get_device, set_seed  # noqa: E402
 
@@ -55,12 +57,13 @@ def head_statistics(weights: torch.Tensor, skip: int = 16) -> list[dict[str, flo
     return stats
 
 
-def zero_head(model: torch.nn.Module, layer: int, head: int):
+def zero_head(model: torch.nn.Module, layer: int, head: int) -> Callable[[], None]:
     """Make one attention head output zeros. Returns a function that undoes the change."""
     module = model.blocks[layer].attn.heads[head]
     original = module.forward
 
     def forward(x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """The head's forward pass with its output replaced by zeros."""
         out, weights = original(x)
         return torch.zeros_like(out), weights  # the head now contributes nothing
 
@@ -69,7 +72,9 @@ def zero_head(model: torch.nn.Module, layer: int, head: int):
 
 
 @torch.no_grad()
-def validation_loss(model, val_ids: torch.Tensor, cfg, device: torch.device, batches: int = 40) -> float:
+def validation_loss(
+    model: torch.nn.Module, val_ids: torch.Tensor, cfg: Config, device: torch.device, batches: int = 40
+) -> float:
     """Average loss over the SAME validation batches every time it is called."""
     torch.manual_seed(0)
     total = 0.0
@@ -79,7 +84,9 @@ def validation_loss(model, val_ids: torch.Tensor, cfg, device: torch.device, bat
     return total / batches
 
 
-def head_removal_table(model, val_ids: torch.Tensor, cfg, device: torch.device) -> list[str]:
+def head_removal_table(
+    model: torch.nn.Module, val_ids: torch.Tensor, cfg: Config, device: torch.device
+) -> list[str]:
     """Switch off heads of layer 0, one at a time and in one pair, and measure the damage.
 
     Looking at where a head attends only describes it. Removing it and measuring the
@@ -102,6 +109,7 @@ def head_removal_table(model, val_ids: torch.Tensor, cfg, device: torch.device) 
 
 
 def main() -> None:
+    """Command-line entry point."""
     parser = argparse.ArgumentParser(description="Attention statistics per head.")
     parser.add_argument("--checkpoint", default="checkpoints/small/best.pt")
     parser.add_argument("--out", default="results/attention_stats.md")

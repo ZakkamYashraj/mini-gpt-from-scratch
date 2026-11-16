@@ -137,6 +137,14 @@ class MultiHeadAttention(nn.Module):
         dropout: float = 0.0,
         bias: bool = False,
     ) -> None:
+        """
+        Args:
+            n_embd: width C of the token vectors (must be divisible by n_head).
+            n_head: number of attention heads run in parallel.
+            block_size: maximum sequence length.
+            dropout: dropout probability.
+            bias: whether the Linear layers have a bias term.
+        """
         super().__init__()
         if n_embd % n_head != 0:
             raise ValueError(f"n_embd ({n_embd}) must be divisible by n_head ({n_head})")
@@ -184,6 +192,12 @@ class FeedForward(nn.Module):
     """
 
     def __init__(self, n_embd: int, dropout: float = 0.0, bias: bool = False) -> None:
+        """
+        Args:
+            n_embd: width C of the token vectors; the hidden layer is 4 times wider.
+            dropout: dropout probability applied to the output.
+            bias: whether the Linear layers have a bias term.
+        """
         super().__init__()
         self.fc = nn.Linear(n_embd, 4 * n_embd, bias=bias)  # expand to 4x the width
         self.act = nn.GELU()  # smooth non-linearity (a softer version of ReLU)
@@ -208,6 +222,12 @@ class LayerNorm(nn.Module):
     """
 
     def __init__(self, n_embd: int, bias: bool = False, eps: float = 1e-5) -> None:
+        """
+        Args:
+            n_embd: length C of the vectors to normalise.
+            bias: also learn an additive bias (the gain is always learned).
+            eps: small constant added to the variance.
+        """
         super().__init__()
         self.eps = eps  # tiny constant that avoids dividing by zero
         self.gain = nn.Parameter(torch.ones(n_embd))  # starts as "do nothing" (multiply by 1)
@@ -237,6 +257,7 @@ class Block(nn.Module):
     """
 
     def __init__(self, cfg: ModelConfig) -> None:
+        """Create the two sub-layers and their LayerNorms from the model configuration."""
         super().__init__()
         self.ln1 = LayerNorm(cfg.n_embd, cfg.bias)
         self.attn = MultiHeadAttention(cfg.n_embd, cfg.n_head, cfg.block_size, cfg.dropout, cfg.bias)
@@ -265,6 +286,7 @@ class GPT(nn.Module):
     """
 
     def __init__(self, cfg: ModelConfig) -> None:
+        """Create every layer of the model described by ``cfg`` and initialise the weights."""
         super().__init__()
         self.cfg = cfg
 

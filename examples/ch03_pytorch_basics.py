@@ -40,11 +40,13 @@ class Line(nn.Module):
     """The model y = w * x + b, with two learnable numbers w and b."""
 
     def __init__(self) -> None:
+        """Create the two parameters, both starting at 0."""
         super().__init__()
         self.w = nn.Parameter(torch.tensor(0.0))  # nn.Parameter = "please learn this"
         self.b = nn.Parameter(torch.tensor(0.0))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Compute w * x + b for every element of x."""
         return self.w * x + self.b
 
 

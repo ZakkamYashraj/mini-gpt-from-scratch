@@ -95,6 +95,7 @@ class CSVLogger:
     """Append rows of metrics to a CSV file (one row per evaluation)."""
 
     def __init__(self, path: str | Path, fieldnames: list[str]) -> None:
+        """Create (or overwrite) the file and write the header row."""
         self.path = Path(path)
         self.fieldnames = fieldnames
         self.path.parent.mkdir(parents=True, exist_ok=True)

@@ -71,6 +71,7 @@ class CharTokenizer:
 
     @classmethod
     def from_dict(cls, state: dict[str, Any]) -> "CharTokenizer":
+        """Rebuild the tokenizer from the dict produced by :meth:`to_dict`."""
         return cls(list(state["chars"]))
 
     def save(self, path: str | Path) -> None:
@@ -225,6 +226,7 @@ class BPETokenizer:
 
     @classmethod
     def from_dict(cls, state: dict[str, Any]) -> "BPETokenizer":
+        """Rebuild the tokenizer from the dict produced by :meth:`to_dict`."""
         return cls({(a, b): new_id for a, b, new_id in state["merges"]})
 
     def save(self, path: str | Path) -> None:
@@ -268,6 +270,7 @@ def load_tokenizer(path: str | Path) -> Tokenizer:
 
 
 def _save_json(state: dict[str, Any], path: str | Path) -> None:
+    """Write ``state`` to ``path`` as JSON, creating the folder if needed."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -275,5 +278,6 @@ def _save_json(state: dict[str, Any], path: str | Path) -> None:
 
 
 def _load_json(path: str | Path) -> dict[str, Any]:
+    """Read a JSON file into a dict."""
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)

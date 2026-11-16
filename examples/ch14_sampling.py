@@ -19,6 +19,7 @@ logits = torch.tensor([[3.0, 2.5, 2.0, 1.0, 0.0, -2.0]])  # the model's scores f
 
 
 def show(label: str, probs: torch.Tensor) -> None:
+    """Print one row of probabilities next to its label."""
     cells = "  ".join(f"{t}:{p:.3f}" for t, p in zip(tokens, probs[0].tolist()))
     print(f"{label:<22}{cells}")
 

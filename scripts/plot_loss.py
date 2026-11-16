@@ -59,6 +59,7 @@ def plot_loss(run_dir: str | Path, out_path: str | Path) -> Path:
 
 
 def main() -> None:
+    """Command-line entry point."""
     parser = argparse.ArgumentParser(description="Plot train vs validation loss.")
     parser.add_argument("--run", default="checkpoints/small", help="folder containing log.csv")
     parser.add_argument("--out", default="results/loss_curve.png")

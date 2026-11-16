@@ -23,6 +23,9 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
 import torch.nn.functional as F  # noqa: E402
+from matplotlib.axes import Axes  # noqa: E402
+from matplotlib.colors import Colormap  # noqa: E402
+from matplotlib.figure import Figure  # noqa: E402
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Rectangle  # noqa: E402
 from plot_style import (AQUA, BLUE, DIVERGING, GRID, MUTED, ORANGE, SEQUENTIAL, TEXT,  # noqa: E402
                         apply_style)
@@ -38,7 +41,9 @@ LIGHT_BLUE, LIGHT_ORANGE, LIGHT_AQUA, LIGHT_GREY = "#dbe9fb", "#fde3d6", "#d6f1e
 # --------------------------------------------------------------------------- #
 
 
-def blank_axes(width: float, height: float, xlim: tuple[float, float], ylim: tuple[float, float]):
+def blank_axes(
+    width: float, height: float, xlim: tuple[float, float], ylim: tuple[float, float]
+) -> tuple[Figure, Axes]:
     """A figure with one axes and nothing drawn on it (for box-and-arrow diagrams)."""
     fig, ax = plt.subplots(figsize=(width, height))
     ax.set_xlim(*xlim)
@@ -47,21 +52,30 @@ def blank_axes(width: float, height: float, xlim: tuple[float, float], ylim: tup
     return fig, ax
 
 
-def box(ax, x, y, w, h, text, fill=LIGHT_BLUE, edge=BLUE, fontsize=9, weight="normal", color=TEXT):
+def box(
+    ax: Axes, x: float, y: float, w: float, h: float, text: str, fill: str = LIGHT_BLUE, edge: str = BLUE,
+    fontsize: float = 9, weight: str = "normal", color: str = TEXT,
+) -> None:
     """A rounded rectangle centred at (x, y) with text inside."""
     ax.add_patch(FancyBboxPatch((x - w / 2, y - h / 2), w, h, boxstyle="round,pad=0.02,rounding_size=0.08",
                                 facecolor=fill, edgecolor=edge, linewidth=1.2))
     ax.text(x, y, text, ha="center", va="center", fontsize=fontsize, weight=weight, color=color)
 
 
-def arrow(ax, start, end, color=MUTED, style="-|>", width=1.2, curve=0.0):
+def arrow(
+    ax: Axes, start: tuple[float, float], end: tuple[float, float], color: str = MUTED,
+    style: str = "-|>", width: float = 1.2, curve: float = 0.0,
+) -> None:
     """An arrow from ``start`` to ``end`` (both (x, y) tuples)."""
     ax.add_patch(FancyArrowPatch(start, end, arrowstyle=style, mutation_scale=11, color=color,
                                  linewidth=width, connectionstyle=f"arc3,rad={curve}",
                                  shrinkA=0, shrinkB=0))
 
 
-def cell_grid(ax, x0, y0, values, fill, cell=0.6, fontsize=9, edge="white", fmt="{:g}", color=TEXT):
+def cell_grid(
+    ax: Axes, x0: float, y0: float, values: np.ndarray | list, fill: str, cell: float = 0.6,
+    fontsize: float = 9, edge: str = "white", fmt: str = "{:g}", color: str = TEXT,
+) -> None:
     """Draw a 2-D array as a grid of coloured cells with the numbers written inside."""
     values = np.atleast_2d(values)
     for r, row in enumerate(values):
@@ -72,7 +86,8 @@ def cell_grid(ax, x0, y0, values, fill, cell=0.6, fontsize=9, edge="white", fmt=
                     ha="center", va="center", fontsize=fontsize, color=color)
 
 
-def save(fig, name: str) -> None:
+def save(fig: Figure, name: str) -> None:
+    """Write the figure to docs/figures/<name>.png and close it."""
     OUT.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT / f"{name}.png")
     plt.close(fig)
@@ -85,6 +100,7 @@ def save(fig, name: str) -> None:
 
 
 def fig_pipeline() -> None:
+    """Chapter 1: text -> tokenizer -> model -> probabilities -> sample, as a loop."""
     fig, ax = blank_axes(9.0, 2.9, (0, 10), (0, 3.2))
     y = 2.2
     box(ax, 0.9, y, 1.5, 0.8, '"First Citi"', LIGHT_GREY, MUTED)
@@ -105,6 +121,7 @@ def fig_pipeline() -> None:
 
 
 def fig_next_token(checkpoint: Path) -> None:
+    """Chapter 1: the trained model's top predictions for the next character."""
     from generate import load_model
 
     model, tokenizer, _ = load_model(checkpoint, torch.device("cpu"))
@@ -136,6 +153,7 @@ def fig_next_token(checkpoint: Path) -> None:
 
 
 def fig_broadcasting() -> None:
+    """Chapter 2: two examples of broadcasting drawn as grids of cells."""
     fig, ax = blank_axes(8.8, 1.9, (0, 14.9), (0.55, 3.45))
     c = 0.62
     ax.text(0.0, 3.1, "M   shape (2, 3)", fontsize=9, color=MUTED)
@@ -163,6 +181,7 @@ def fig_broadcasting() -> None:
 
 
 def fig_matmul() -> None:
+    """Chapter 2: a worked matrix multiplication and the shape rule."""
     fig, ax = blank_axes(8.6, 2.2, (0, 14.2), (0.2, 3.6))
     c = 0.55
     A = [[1, 2], [3, 4], [5, 6]]
@@ -196,6 +215,7 @@ def fig_matmul() -> None:
 
 
 def fig_comp_graph() -> None:
+    """Chapter 3: the computation graph of f = x^2 * y + 3y, forward and backward."""
     fig, ax = blank_axes(8.4, 2.9, (0, 12), (0, 4))
     nodes = {
         "x": (0.8, 3.1, "x = 2", LIGHT_GREY), "y": (0.8, 0.9, "y = 5", LIGHT_GREY),
@@ -222,6 +242,7 @@ def fig_comp_graph() -> None:
 
 
 def fig_network() -> None:
+    """Chapter 4: the 1 -> 16 -> 1 network as circles and lines."""
     fig, ax = blank_axes(6.6, 3.3, (0, 10), (0, 5))
     hidden_y = np.linspace(0.5, 4.5, 8)
     for y in hidden_y:
@@ -244,6 +265,7 @@ def fig_network() -> None:
 
 
 def fig_activations() -> None:
+    """Chapter 4: the ReLU, tanh and GELU curves."""
     z = np.linspace(-4, 4, 400)
     gelu = np.array([0.5 * v * (1 + math.erf(v / math.sqrt(2))) for v in z])
     curves = [("ReLU:  max(0, z)", np.maximum(0, z), BLUE), ("tanh(z)", np.tanh(z), ORANGE), ("GELU(z)", gelu, AQUA)]
@@ -260,10 +282,13 @@ def fig_activations() -> None:
 
 
 def fig_gradient_descent() -> None:
-    def loss(w1, w2):
+    """Chapter 4: gradient-descent paths for three learning rates on a 2-D bowl."""
+    def loss(w1: np.ndarray, w2: np.ndarray) -> np.ndarray:
+        """A bowl-shaped loss that is steeper along parameter 2."""
         return 0.5 * w1**2 + 2.5 * w2**2
 
-    def path(lr, steps=18):
+    def path(lr: float, steps: int = 18) -> np.ndarray:
+        """The points visited by gradient descent with learning rate ``lr``."""
         w = np.array([-3.5, 1.4])
         points = [w.copy()]
         for _ in range(steps):
@@ -293,6 +318,7 @@ def fig_gradient_descent() -> None:
 
 
 def fig_tiny_network() -> None:
+    """Chapter 4: the tiny network's fit to sin(x) during training, and its loss curve."""
     rng = np.random.default_rng(0)
     X = np.linspace(-np.pi, np.pi, 200).reshape(-1, 1)
     Y = np.sin(X)
@@ -336,6 +362,7 @@ def fig_tiny_network() -> None:
 
 
 def fig_overfitting() -> None:
+    """Chapter 5: an illustrative pair of train/validation curves showing overfitting."""
     steps = np.linspace(0, 1, 200)
     train = 0.35 + 3.8 * np.exp(-6 * steps) - 0.25 * steps
     val = 1.45 + 2.7 * np.exp(-7 * steps) + 0.9 * np.clip(steps - 0.42, 0, None) ** 1.6
@@ -363,6 +390,7 @@ def fig_overfitting() -> None:
 
 
 def fig_batch() -> None:
+    """Chapter 5: one training sequence and its targets (shifted by one)."""
     text = "First Citizen:"
     fig, ax = blank_axes(8.2, 2.1, (0, 15.2), (0, 3.6))
     c = 0.9
@@ -393,6 +421,7 @@ def fig_batch() -> None:
 
 
 def fig_bpe_compression() -> None:
+    """Chapter 6: length of Tiny Shakespeare as BPE merges are added (re-runs the training loop)."""
     from mini_gpt.tokenizer import _CHUNK_PATTERN, _merge_pair
 
     text = Path("data/tinyshakespeare.txt").read_text(encoding="utf-8")
@@ -428,6 +457,7 @@ def fig_bpe_compression() -> None:
 
 
 def fig_embedding_lookup() -> None:
+    """Chapter 7: an embedding lookup as rows copied out of a table."""
     rng = np.random.default_rng(3)
     table = np.round(rng.normal(0, 1, size=(5, 4)), 1)
     fig, ax = blank_axes(8.2, 2.9, (0, 14), (-0.3, 4.6))
@@ -455,6 +485,7 @@ def fig_embedding_lookup() -> None:
 
 
 def fig_pos_emb(checkpoint: Path) -> None:
+    """Chapter 7: cosine similarity between the trained positional embeddings."""
     from generate import load_model
 
     model, _, _ = load_model(checkpoint, torch.device("cpu"))
@@ -477,7 +508,11 @@ def fig_pos_emb(checkpoint: Path) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def _heatmap(ax, values, title, labels, fmt="{:.2f}", vmax=1.0, cmap=SEQUENTIAL):
+def _heatmap(
+    ax: Axes, values: torch.Tensor | np.ndarray, title: str, labels: list[str], fmt: str = "{:.2f}",
+    vmax: float = 1.0, cmap: Colormap = SEQUENTIAL,
+) -> None:
+    """Draw a small matrix as coloured cells with the numbers written inside."""
     values = np.asarray(values, dtype=float)
     shown = np.where(np.isfinite(values), values, np.nan)
     ax.imshow(np.nan_to_num(shown, nan=0.0), cmap=cmap, vmin=0, vmax=vmax)
@@ -495,6 +530,7 @@ def _heatmap(ax, values, title, labels, fmt="{:.2f}", vmax=1.0, cmap=SEQUENTIAL)
 
 
 def fig_attention_example() -> None:
+    """Chapters 9-10: scores, unmasked weights and masked weights of the worked example."""
     X = torch.tensor([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
     Q, K = X * 2.0, X
     scores = Q @ K.T / math.sqrt(2)
@@ -513,6 +549,7 @@ def fig_attention_example() -> None:
 
 
 def fig_causal_mask() -> None:
+    """Chapter 10: the causal mask, and one sequence as four training examples."""
     labels = list("hello")
     mask = np.tril(np.ones((5, 5)))
     fig, axes = plt.subplots(1, 2, figsize=(8.0, 3.3))
@@ -559,6 +596,7 @@ def fig_causal_mask() -> None:
 
 
 def fig_transformer_block() -> None:
+    """Chapter 11: one pre-norm transformer block with its residual connections."""
     fig, ax = blank_axes(6.4, 5.6, (0, 10), (0, 12.4))
     x = 4.2
     box(ax, x, 0.7, 3.2, 0.8, "x  (B, T, C)", LIGHT_GREY, MUTED)
@@ -586,6 +624,7 @@ def fig_transformer_block() -> None:
 
 
 def fig_gpt_architecture() -> None:
+    """Chapter 12: the whole model from token IDs to logits, with weight tying."""
     fig, ax = blank_axes(7.0, 6.2, (0, 11), (0, 13.6))
     x = 4.6
     box(ax, x, 0.6, 4.4, 0.8, "token IDs  (B, T)", LIGHT_GREY, MUTED)
@@ -623,6 +662,7 @@ def fig_gpt_architecture() -> None:
 
 
 def fig_lr_schedule() -> None:
+    """Chapter 13: the warmup + cosine learning-rate schedule of configs/small.yaml."""
     max_steps, warmup = 5000, 100
     steps = np.arange(max_steps + 1)
     lrs = [get_lr(int(s), 1e-3, 1e-4, warmup, max_steps) for s in steps]
@@ -642,6 +682,7 @@ def fig_lr_schedule() -> None:
 
 
 def fig_temperature() -> None:
+    """Chapter 14: one set of logits at three temperatures."""
     tokens = ["e", "a", "o", "i", "u", "z"]
     logits = torch.tensor([3.0, 2.5, 2.0, 1.0, 0.0, -2.0])
     fig, axes = plt.subplots(1, 3, figsize=(9.0, 2.7), sharey=True)
@@ -660,6 +701,7 @@ def fig_temperature() -> None:
 
 
 def fig_topk_topp() -> None:
+    """Chapter 14: the effect of top-k and top-p on a toy distribution."""
     from mini_gpt.model import top_k_filter, top_p_filter
 
     tokens = ["e", "a", "o", "i", "u", "z"]
@@ -709,6 +751,7 @@ NEEDS_CHECKPOINT = {"next_token": fig_next_token, "pos_emb": fig_pos_emb}
 
 
 def main() -> None:
+    """Command-line entry point."""
     parser = argparse.ArgumentParser(description="Generate the learning-guide figures.")
     parser.add_argument("--only", nargs="*", help="names of the figures to (re)generate")
     parser.add_argument("--checkpoint", default="checkpoints/small/best.pt")

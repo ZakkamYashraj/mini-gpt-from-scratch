@@ -42,6 +42,7 @@ def prepare_markdown(text: str) -> str:
     # Image paths in the markdown are relative to docs/. Typst wants them relative
     # to the project root (written with a leading slash).
     def absolute(match: re.Match) -> str:
+        """Rewrite one image link so that its path starts at the repository root."""
         target = (DOCS / match.group(2)).resolve().relative_to(ROOT).as_posix()
         return f"{match.group(1)}(/{target})"
 
@@ -89,6 +90,7 @@ def build(render_png: bool = False) -> Path:
 
 
 def main() -> None:
+    """Command-line entry point."""
     parser = argparse.ArgumentParser(description="Build the learning-guide PDF.")
     parser.add_argument("--png", action="store_true", help="also render each page as a PNG")
     args = parser.parse_args()

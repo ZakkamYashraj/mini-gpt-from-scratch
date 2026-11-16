@@ -45,6 +45,7 @@ print("\n3. Residual connections and gradients")
 
 
 def first_layer_gradient(use_residual: bool) -> float:
+    """Size of the gradient reaching the first of 30 stacked layers."""
     torch.manual_seed(0)
     layers = [nn.Linear(16, 16) for _ in range(30)]
     h = torch.randn(4, 16)

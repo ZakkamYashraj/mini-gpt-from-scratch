@@ -183,6 +183,7 @@ def plot_results(rows: list[dict], path: Path) -> None:
 
 
 def main() -> None:
+    """Command-line entry point."""
     parser = argparse.ArgumentParser(description="Run the ablation study.")
     parser.add_argument("--only", nargs="*", choices=list(VARIANTS), help="run only these variants")
     parser.add_argument("--seeds", nargs="*", type=int, default=[1337])

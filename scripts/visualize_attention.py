@@ -92,6 +92,7 @@ def most_focused_head(maps: list[torch.Tensor]) -> tuple[int, int]:
 
 
 def main() -> None:
+    """Command-line entry point."""
     parser = argparse.ArgumentParser(description="Plot attention heatmaps.")
     parser.add_argument("--checkpoint", default="checkpoints/small/best.pt")
     parser.add_argument("--text", default=DEFAULT_TEXT, help=r"sentence to visualise (use \n for newline)")

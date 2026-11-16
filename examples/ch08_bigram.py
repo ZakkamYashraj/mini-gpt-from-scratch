@@ -51,10 +51,14 @@ class BigramLM(nn.Module):
     """A table with one row of V scores (logits) for every possible current token."""
 
     def __init__(self, vocab_size: int) -> None:
+        """Create the (V, V) table of logits."""
         super().__init__()
         self.table = nn.Embedding(vocab_size, vocab_size)
 
-    def forward(self, idx: torch.Tensor, targets: torch.Tensor | None = None):
+    def forward(
+        self, idx: torch.Tensor, targets: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        """Return the logits (B, T, V) and, if targets are given, the cross-entropy loss."""
         logits = self.table(idx)  # (B, T) -> (B, T, V): look up the row for each token
         loss = None
         if targets is not None:
@@ -64,6 +68,7 @@ class BigramLM(nn.Module):
 
     @torch.no_grad()
     def generate(self, idx: torch.Tensor, max_new_tokens: int) -> torch.Tensor:
+        """Extend ``idx`` (B, T) by ``max_new_tokens`` tokens, sampling one at a time."""
         for _ in range(max_new_tokens):
             logits, _ = self(idx)
             probs = F.softmax(logits[:, -1, :], dim=-1)  # distribution after the last token
