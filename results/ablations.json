@@ -1,0 +1,67 @@
+[
+  {
+    "variant": "baseline",
+    "description": "Baseline: char tokenizer, 4 heads, positional embeddings, tied weights",
+    "n_seeds": 2,
+    "n_params": 3197440,
+    "vocab_size": 65,
+    "val_loss_per_token": 1.466366171836853,
+    "train_loss_per_token": 1.166724681854248,
+    "bits_per_char": 2.1155192042363615,
+    "bits_per_char_min": 2.1069233393635876,
+    "bits_per_char_max": 2.1241150691091355,
+    "minutes": 2.270915369192759
+  },
+  {
+    "variant": "one_head",
+    "description": "1 attention head instead of 4 (same total width)",
+    "n_seeds": 2,
+    "n_params": 3197440,
+    "vocab_size": 65,
+    "val_loss_per_token": 1.4857226610183716,
+    "train_loss_per_token": 1.2355870008468628,
+    "bits_per_char": 2.1434447151875595,
+    "bits_per_char_min": 2.1367853749635004,
+    "bits_per_char_max": 2.150104055411618,
+    "minutes": 1.263021558523178
+  },
+  {
+    "variant": "no_pos_emb",
+    "description": "No positional embeddings",
+    "n_seeds": 2,
+    "n_params": 3164672,
+    "vocab_size": 65,
+    "val_loss_per_token": 1.6132696866989136,
+    "train_loss_per_token": 1.378449022769928,
+    "bits_per_char": 2.327456176617014,
+    "bits_per_char_min": 2.3167681427964943,
+    "bits_per_char_max": 2.3381442104375343,
+    "minutes": 2.2585905234018964
+  },
+  {
+    "variant": "untied",
+    "description": "Output layer NOT tied to the token embedding",
+    "n_seeds": 2,
+    "n_params": 3214080,
+    "vocab_size": 65,
+    "val_loss_per_token": 1.4569858312606812,
+    "train_loss_per_token": 1.16153484582901,
+    "bits_per_char": 2.1019862334052686,
+    "bits_per_char_min": 2.0881682873216962,
+    "bits_per_char_max": 2.1158041794888414,
+    "minutes": 2.2016931414604186
+  },
+  {
+    "variant": "bpe",
+    "description": "BPE tokenizer (vocab 512) instead of characters",
+    "n_seeds": 2,
+    "n_params": 3311872,
+    "vocab_size": 512,
+    "val_loss_per_token": 3.016987919807434,
+    "train_loss_per_token": 1.6743383407592773,
+    "bits_per_char": 2.1674617785990193,
+    "bits_per_char_min": 2.166396646162167,
+    "bits_per_char_max": 2.168526911035872,
+    "minutes": 2.2346898833910624
+  }
+]
