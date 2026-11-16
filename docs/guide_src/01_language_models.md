@@ -102,7 +102,7 @@ $$-\ln\left(\frac{1}{65}\right) = \ln(65) \approx 4.17$$
 
 So **4.17 is the loss of pure guessing** for our vocabulary. When you start training, the
 loss should begin near 4.17 (if it does not, something is wrong: we will use this as a
-test in Chapter 17). Our finished model reaches about 1.5.
+test in Chapter 17). Our finished model reaches 1.47.
 
 > **Note**
 >
@@ -139,10 +139,19 @@ Each new token is produced using all the text so far, including the tokens the m
 itself just wrote. This is called **autoregressive** generation. Chapter 14 covers the
 knobs that control it (temperature, top-k, top-p).
 
-Here is text produced this way by our model at four moments during one training run. At
-step 0 the parameters are random. Watch the model discover, in order: which characters
-are common, where spaces and line breaks go, short words, the "NAME: speech" layout of a
-play, and finally something that looks like Shakespeare from a distance.
+Here is text produced this way by our model at four moments during one training run.
+
+- **Step 0.** The parameters are random, and so is the output: every character is about
+  equally likely.
+- **Step 250** (about one minute of training). The model has already learned which
+  characters are common, where spaces and line breaks go, many short words (`that`,
+  `and`, `the`), and the layout of a play: a name in capitals, a colon, a speech. Most
+  longer "words" are invented.
+- **Step 2,500.** Real words, punctuation in sensible places, lines that read like
+  verse.
+- **Step 5,000.** Fluent at a glance, though it means nothing. (By this point the model
+  has started to memorise its training text; Chapter 5 explains why that is a problem,
+  and Chapter 13 shows it in this very run.)
 
 {{include results/samples.md from="## Untrained" demote="2"}}
 

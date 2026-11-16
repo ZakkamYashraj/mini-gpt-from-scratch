@@ -79,7 +79,7 @@ You need Python 3.10 or newer. From the repository folder:
 ```bash
 python -m venv .venv
 .venv\Scripts\activate            # Windows  (on macOS/Linux: source .venv/bin/activate)
-pip install torch --index-url https://download.pytorch.org/whl/cu128   # NVIDIA GPU build
+pip install torch --index-url https://download.pytorch.org/whl/cu130   # NVIDIA GPU build
 pip install -r requirements.txt
 python -m pytest                  # every test should pass
 ```
@@ -90,7 +90,7 @@ Chapter 3 explains what the GPU is for.
 
 > **Note**
 >
-> The `cu128` in the address means "built for CUDA 12.8", the NVIDIA software that lets
+> The `cu130` in the address means "built for CUDA 13.0", the NVIDIA software that lets
 > PyTorch talk to the graphics card. Very new or very old cards may need a different
 > build; the selector on [pytorch.org](https://pytorch.org/get-started/locally/) prints
 > the right command for your machine.

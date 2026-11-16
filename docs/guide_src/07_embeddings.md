@@ -79,9 +79,19 @@ characters whose embedding vectors point in the most similar direction (measured
 **cosine similarity**: the dot product of the two vectors after scaling both to
 length 1).
 
-{{output examples/ch07_embeddings.py from="6. Nearest neighbours" to="closest to '.'"}}
+{{output examples/ch07_embeddings.py from="6. Nearest neighbours"}}
 
-<!-- RESULTS-EMBEDDINGS -->
+Nobody told the model any of this, yet:
+
+- the nearest neighbour of `a` is its own capital `A`, followed by the other vowels `e`,
+  `o` and `i`;
+- the nearest neighbour of `t` is `T`, followed by other consonants;
+- the capital `A` sits near other capitals (`O`, `U`, `B`) and its own lowercase form;
+- the full stop sits with `?`, `;`, `!` and `:`, the other marks that end a clause.
+
+The model has discovered upper and lower case, vowels and consonants, and punctuation
+as categories, purely because treating similar characters alike helps it predict what
+comes next.
 
 ### 7.4 The problem: no sense of order
 
@@ -165,9 +175,16 @@ message instead of a confusing crash.
 What did our model learn about positions? The figure compares every pair of rows of the
 trained position table.
 
-![Cosine similarity between the learned positional embeddings of every pair of positions, in the trained model. Blue means the two vectors point the same way; red means opposite ways.](figures/pos_emb_similarity.png)
+![Cosine similarity between the learned positional embeddings of every pair of positions, in the trained model. Red means the two vectors point in similar directions, blue in opposing ones, and grey that they are unrelated.](figures/pos_emb_similarity.png)
 
-<!-- RESULTS-POSEMB -->
+The dark red diagonal is each position compared with itself (similarity 1). Around it
+is a paler red band: positions that are **close together** have similar vectors, and
+the similarity fades over a few dozen positions. Positions far apart are unrelated or
+slightly opposed (grey and pale blue). The table started as random numbers, where every
+off-diagonal entry would be near zero, so this structure was learned: the model has
+worked out for itself that position 100 is "nearly the same place" as position 101, and
+quite a different place from position 200. The picture is noisy, as you would expect
+from a table shaped by data and not by a formula.
 
 ### Exercises
 
